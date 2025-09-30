@@ -87,6 +87,17 @@ class TerasliceClient:
         data = self._fetch_json("/v1/jobs", params=params if params else None)
         return [Job(**item) for item in data]
 
+    def fetch_job_by_id(self, job_id: str) -> dict[str, Any]:
+        """Fetch a single job by ID.
+
+        Args:
+            job_id: Job ID to fetch
+
+        Returns:
+            Raw JSON response for the job
+        """
+        return self._fetch_json(f"/v1/jobs/{job_id}")
+
     def fetch_execution_contexts(self, size: int | None = None, from_: int | None = None) -> list[ExecutionContext]:
         """Fetch all execution contexts.
 

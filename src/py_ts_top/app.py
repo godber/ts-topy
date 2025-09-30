@@ -1,10 +1,87 @@
 """Textual application for monitoring Teraslice clusters."""
 
+import json
+
 from textual.app import App, ComposeResult
-from textual.containers import Container, VerticalScroll
-from textual.widgets import Header, Footer, Static, DataTable
+from textual.containers import Container, VerticalScroll, Vertical
+from textual.screen import ModalScreen
+from textual.widgets import Header, Footer, Static, DataTable, Button
 
 from py_ts_top.client import TerasliceClient
+
+
+class JsonModal(ModalScreen):
+    """Modal screen to display JSON data."""
+
+    DEFAULT_CSS = """
+    JsonModal {
+        align: center middle;
+    }
+
+    JsonModal > Vertical {
+        width: 90%;
+        height: 90%;
+        background: $panel;
+        border: thick $primary;
+    }
+
+    JsonModal .modal-title {
+        width: 100%;
+        height: auto;
+        padding: 1 2;
+        background: $primary;
+    }
+
+    JsonModal VerticalScroll {
+        width: 100%;
+        height: 1fr;
+        padding: 1 2;
+    }
+
+    JsonModal Button {
+        width: 20;
+        margin: 1 2;
+    }
+    """
+
+    def __init__(self, json_data: dict, title: str = "JSON Details", url: str | None = None) -> None:
+        """Initialize the JSON modal.
+
+        Args:
+            json_data: Dictionary to display as JSON
+            title: Title for the modal
+            url: Optional URL to display
+        """
+        super().__init__()
+        self.json_data = json_data
+        self.modal_title = title
+        self.url = url
+
+    def compose(self) -> ComposeResult:
+        """Create child widgets."""
+        from rich.text import Text
+
+        formatted_json = json.dumps(self.json_data, indent=2, default=str)
+
+        if self.url:
+            # Create title with clickable link
+            title = Text()
+            title.append(self.modal_title, style="bold")
+            title.append("\n")
+            title.append(self.url, style=f"link {self.url}")
+        else:
+            title = Text(self.modal_title, style="bold")
+
+        yield Vertical(
+            Static(title, classes="modal-title"),
+            VerticalScroll(Static(formatted_json)),
+            Button("Close", variant="primary", id="close-button"),
+        )
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle button press."""
+        if event.button.id == "close-button":
+            self.dismiss()
 
 
 class TerasliceApp(App):
@@ -74,6 +151,7 @@ class TerasliceApp(App):
         self.interval = interval
         self.request_timeout = request_timeout
         self.client = TerasliceClient(url, timeout=request_timeout)
+        self.job_id_map: dict[int, str] = {}  # Maps row index to full job_id
 
     def compose(self) -> ComposeResult:
         """Create child widgets for the app."""
@@ -171,9 +249,10 @@ class TerasliceApp(App):
                     str(ctrl.queued),
                 ])
 
-            # Prepare job rows
+            # Prepare job rows and ID mapping
             job_rows = []
-            for job in jobs_sorted:
+            job_id_map = {}
+            for idx, job in enumerate(jobs_sorted):
                 active_status = "Yes" if job.active else "No" if job.active is not None else "N/A"
                 job_id_short = job.job_id[:8] if len(job.job_id) > 8 else job.job_id
                 created = job.created.strftime("%Y-%m-%d %H:%M:%S")
@@ -188,6 +267,7 @@ class TerasliceApp(App):
                     created,
                     updated,
                 ])
+                job_id_map[idx] = job.job_id
 
             # Prepare execution context rows
             ex_rows = []
@@ -217,11 +297,12 @@ class TerasliceApp(App):
                 controller_rows,
                 job_rows,
                 ex_rows,
+                job_id_map,
             )
 
         except Exception as e:
             error_msg = f"[b red]Error:[/b red] {str(e)}"
-            self.call_from_thread(self.update_display, error_msg, [], [], [])
+            self.call_from_thread(self.update_display, error_msg, [], [], [], {})
 
     def update_display(
         self,
@@ -229,6 +310,7 @@ class TerasliceApp(App):
         controller_rows: list,
         job_rows: list,
         ex_rows: list,
+        job_id_map: dict[int, str],
     ) -> None:
         """Update the display widgets (called from main thread)."""
         # Update cluster info
@@ -241,11 +323,12 @@ class TerasliceApp(App):
         for row in controller_rows:
             controllers_table.add_row(*row)
 
-        # Update jobs table
+        # Update jobs table and store job ID mapping
         jobs_table = self.query_one("#jobs-table", DataTable)
         jobs_table.clear()
         for row in job_rows:
             jobs_table.add_row(*row)
+        self.job_id_map = job_id_map
 
         # Update execution contexts table
         ex_table = self.query_one("#execution-contexts-table", DataTable)
@@ -260,6 +343,30 @@ class TerasliceApp(App):
     def action_refresh(self) -> None:
         """Manual refresh action (triggered by 'r' key)."""
         self.refresh_data()
+
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        """Handle row selection in data tables."""
+        # Only handle jobs table selections
+        if event.data_table.id == "jobs-table":
+            row_index = event.cursor_row
+            if row_index in self.job_id_map:
+                job_id = self.job_id_map[row_index]
+                self.run_worker(lambda: self.fetch_and_show_job(job_id), thread=True, exclusive=False)
+
+    def fetch_and_show_job(self, job_id: str) -> None:
+        """Fetch job details and show modal (runs in thread)."""
+        try:
+            job_data = self.client.fetch_job_by_id(job_id)
+            self.call_from_thread(self.show_job_modal, job_data, job_id)
+        except Exception as e:
+            error_data = {"error": str(e)}
+            self.call_from_thread(self.show_job_modal, error_data, job_id)
+
+    def show_job_modal(self, job_data: dict, job_id: str) -> None:
+        """Show the job details modal (called from main thread)."""
+        job_url = f"{self.url}/v1/jobs/{job_id}"
+        modal = JsonModal(job_data, title=f"Job Details: {job_id[:8]}", url=job_url)
+        self.push_screen(modal)
 
     def action_quit(self) -> None:
         """Quit the application."""
