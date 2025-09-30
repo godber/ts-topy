@@ -4,6 +4,8 @@ from typing import Annotated
 
 import typer
 
+from py_ts_top.app import TerasliceApp
+
 app = typer.Typer()
 
 
@@ -14,10 +16,12 @@ def main(
     request_timeout: Annotated[int, typer.Option("--request-timeout", help="HTTP request timeout in seconds")] = 10,
 ) -> None:
     """Monitor a Teraslice cluster in real-time."""
-    typer.echo(f"Connecting to Teraslice at {url}")
-    typer.echo(f"Refresh interval: {interval}s")
-    typer.echo(f"Request timeout: {request_timeout}s")
-    typer.echo("TODO: Implement monitoring UI")
+    tui_app = TerasliceApp(
+        url=url,
+        interval=interval,
+        request_timeout=request_timeout,
+    )
+    tui_app.run()
 
 
 if __name__ == "__main__":
