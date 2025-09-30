@@ -67,7 +67,7 @@ py-ts-top
 # Specify custom URL
 py-ts-top https://teraslice.example.com:8000
 
-# Set refresh interval (default: 2s)
+# Set refresh interval (default: 5s)
 py-ts-top http://localhost:5678 --interval 5
 py-ts-top http://localhost:5678 -i 5
 

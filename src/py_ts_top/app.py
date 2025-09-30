@@ -11,6 +11,10 @@ class TerasliceApp(App):
     """A Textual app to monitor Teraslice clusters."""
 
     CSS = """
+    Screen {
+        overflow: hidden;
+    }
+
     #cluster-info {
         height: auto;
         padding: 1 2;
