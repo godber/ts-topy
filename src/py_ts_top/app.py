@@ -152,6 +152,8 @@ class TerasliceApp(App):
         self.request_timeout = request_timeout
         self.client = TerasliceClient(url, timeout=request_timeout)
         self.job_id_map: dict[int, str] = {}  # Maps row index to full job_id
+        self.controller_id_map: dict[int, str] = {}  # Maps row index to ex_id
+        self.ex_id_map: dict[int, str] = {}  # Maps row index to ex_id
 
     def compose(self) -> ComposeResult:
         """Create child widgets for the app."""
@@ -234,9 +236,10 @@ class TerasliceApp(App):
                 f"[b]Execution Contexts:[/b] {len(execution_contexts)}"
             )
 
-            # Prepare controller rows
+            # Prepare controller rows and ID mapping
             controller_rows = []
-            for ctrl in controllers_sorted:
+            controller_id_map = {}
+            for idx, ctrl in enumerate(controllers_sorted):
                 ex_id_short = ctrl.ex_id[:8] if len(ctrl.ex_id) > 8 else ctrl.ex_id
                 started = ctrl.started.strftime("%Y-%m-%d %H:%M:%S") if ctrl.started else "N/A"
                 controller_rows.append([
@@ -248,6 +251,7 @@ class TerasliceApp(App):
                     str(ctrl.failed),
                     str(ctrl.queued),
                 ])
+                controller_id_map[idx] = ctrl.ex_id
 
             # Prepare job rows and ID mapping
             job_rows = []
@@ -269,9 +273,10 @@ class TerasliceApp(App):
                 ])
                 job_id_map[idx] = job.job_id
 
-            # Prepare execution context rows
+            # Prepare execution context rows and ID mapping
             ex_rows = []
-            for ex in execution_contexts_sorted:
+            ex_id_map = {}
+            for idx, ex in enumerate(execution_contexts_sorted):
                 ex_id_short = ex.ex_id[:8] if len(ex.ex_id) > 8 else ex.ex_id
                 job_id_short = ex.job_id[:8] if len(ex.job_id) > 8 else ex.job_id
                 processed = str(ex.slicer_stats.processed) if ex.slicer_stats else "0"
@@ -290,6 +295,7 @@ class TerasliceApp(App):
                     created,
                     updated,
                 ])
+                ex_id_map[idx] = ex.ex_id
 
             self.call_from_thread(
                 self.update_display,
@@ -297,12 +303,14 @@ class TerasliceApp(App):
                 controller_rows,
                 job_rows,
                 ex_rows,
+                controller_id_map,
                 job_id_map,
+                ex_id_map,
             )
 
         except Exception as e:
             error_msg = f"[b red]Error:[/b red] {str(e)}"
-            self.call_from_thread(self.update_display, error_msg, [], [], [], {})
+            self.call_from_thread(self.update_display, error_msg, [], [], [], {}, {}, {})
 
     def update_display(
         self,
@@ -310,31 +318,56 @@ class TerasliceApp(App):
         controller_rows: list,
         job_rows: list,
         ex_rows: list,
+        controller_id_map: dict[int, str],
         job_id_map: dict[int, str],
+        ex_id_map: dict[int, str],
     ) -> None:
         """Update the display widgets (called from main thread)."""
         # Update cluster info
         info_widget = self.query_one("#cluster-info", Static)
         info_widget.update(cluster_info)
 
-        # Update controllers table
+        # Update controllers table - preserve selection by ID
         controllers_table = self.query_one("#controllers-table", DataTable)
+        selected_ctrl_id = self.controller_id_map.get(controllers_table.cursor_row)
         controllers_table.clear()
         for row in controller_rows:
             controllers_table.add_row(*row)
+        self.controller_id_map = controller_id_map
+        # Find the same controller in the new data
+        if selected_ctrl_id:
+            for idx, ctrl_id in controller_id_map.items():
+                if ctrl_id == selected_ctrl_id:
+                    controllers_table.move_cursor(row=idx)
+                    break
 
-        # Update jobs table and store job ID mapping
+        # Update jobs table - preserve selection by ID
         jobs_table = self.query_one("#jobs-table", DataTable)
+        selected_job_id = self.job_id_map.get(jobs_table.cursor_row)
         jobs_table.clear()
         for row in job_rows:
             jobs_table.add_row(*row)
         self.job_id_map = job_id_map
+        # Find the same job in the new data
+        if selected_job_id:
+            for idx, job_id in job_id_map.items():
+                if job_id == selected_job_id:
+                    jobs_table.move_cursor(row=idx)
+                    break
 
-        # Update execution contexts table
+        # Update execution contexts table - preserve selection by ID
         ex_table = self.query_one("#execution-contexts-table", DataTable)
+        selected_ex_id = self.ex_id_map.get(ex_table.cursor_row)
         ex_table.clear()
         for row in ex_rows:
             ex_table.add_row(*row)
+        self.ex_id_map = ex_id_map
+        # Find the same execution context in the new data
+        if selected_ex_id:
+            for idx, ex_id in ex_id_map.items():
+                if ex_id == selected_ex_id:
+                    ex_table.move_cursor(row=idx)
+                    break
 
     def refresh_data(self) -> None:
         """Refresh data (called by timer or manually)."""
