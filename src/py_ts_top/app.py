@@ -13,6 +13,11 @@ from py_ts_top.client import TerasliceClient
 class JsonModal(ModalScreen):
     """Modal screen to display JSON data."""
 
+    BINDINGS = [
+        ("escape", "dismiss", "Close"),
+        ("q", "dismiss", "Close"),
+    ]
+
     DEFAULT_CSS = """
     JsonModal {
         align: center middle;
@@ -379,12 +384,22 @@ class TerasliceApp(App):
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         """Handle row selection in data tables."""
-        # Only handle jobs table selections
+        row_index = event.cursor_row
+
         if event.data_table.id == "jobs-table":
-            row_index = event.cursor_row
             if row_index in self.job_id_map:
                 job_id = self.job_id_map[row_index]
                 self.run_worker(lambda: self.fetch_and_show_job(job_id), thread=True, exclusive=False)
+
+        elif event.data_table.id == "execution-contexts-table":
+            if row_index in self.ex_id_map:
+                ex_id = self.ex_id_map[row_index]
+                self.run_worker(lambda: self.fetch_and_show_ex(ex_id), thread=True, exclusive=False)
+
+        elif event.data_table.id == "controllers-table":
+            if row_index in self.controller_id_map:
+                ex_id = self.controller_id_map[row_index]
+                self.run_worker(lambda: self.fetch_and_show_ex(ex_id), thread=True, exclusive=False)
 
     def fetch_and_show_job(self, job_id: str) -> None:
         """Fetch job details and show modal (runs in thread)."""
@@ -399,6 +414,21 @@ class TerasliceApp(App):
         """Show the job details modal (called from main thread)."""
         job_url = f"{self.url}/v1/jobs/{job_id}"
         modal = JsonModal(job_data, title=f"Job Details: {job_id[:8]}", url=job_url)
+        self.push_screen(modal)
+
+    def fetch_and_show_ex(self, ex_id: str) -> None:
+        """Fetch execution context details and show modal (runs in thread)."""
+        try:
+            ex_data = self.client.fetch_execution_context_by_id(ex_id)
+            self.call_from_thread(self.show_ex_modal, ex_data, ex_id)
+        except Exception as e:
+            error_data = {"error": str(e)}
+            self.call_from_thread(self.show_ex_modal, error_data, ex_id)
+
+    def show_ex_modal(self, ex_data: dict, ex_id: str) -> None:
+        """Show the execution context details modal (called from main thread)."""
+        ex_url = f"{self.url}/v1/ex/{ex_id}"
+        modal = JsonModal(ex_data, title=f"Execution Context: {ex_id[:8]}", url=ex_url)
         self.push_screen(modal)
 
     def action_quit(self) -> None:

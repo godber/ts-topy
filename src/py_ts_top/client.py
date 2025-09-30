@@ -116,6 +116,17 @@ class TerasliceClient:
         data = self._fetch_json("/v1/ex", params=params if params else None)
         return [ExecutionContext(**item) for item in data]
 
+    def fetch_execution_context_by_id(self, ex_id: str) -> dict[str, Any]:
+        """Fetch a single execution context by ID.
+
+        Args:
+            ex_id: Execution context ID to fetch
+
+        Returns:
+            Raw JSON response for the execution context
+        """
+        return self._fetch_json(f"/v1/ex/{ex_id}")
+
     def fetch_all(self) -> dict[str, Any]:
         """Fetch data from all monitoring endpoints.
 
