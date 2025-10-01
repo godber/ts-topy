@@ -12,7 +12,13 @@ Teraslice clusters with many jobs.
 ## Installation
 
 ```bash
-# Coming soon
+# Install from PyPI
+pip install ts-topy
+
+# Or using pipx (recommended for CLI tools)
+pipx install ts-topy
+
+# Or using uv
 uv tool install ts-topy
 ```
 
