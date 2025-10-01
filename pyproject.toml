@@ -1,6 +1,6 @@
 [project]
 name = "ts-topy"
-version = "0.1.0"
+version = "0.2.0"
 description = "A Python-based monitoring tool for Teraslice distributed computing clusters"
 readme = "README.md"
 requires-python = ">=3.10"
