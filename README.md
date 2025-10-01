@@ -54,7 +54,13 @@ This is a rewrite of [teraslice-top](https://github.com/godber/teraslice-top) in
 ## Installation
 
 ```bash
-# Coming soon
+# Install from PyPI
+pip install ts-topy
+
+# Or using pipx (recommended for CLI tools)
+pipx install ts-topy
+
+# Or using uv
 uv tool install ts-topy
 ```
 
@@ -93,7 +99,7 @@ uv run ts-topy
 
 ## Development Status
 
-🚧 **In Development** - Currently in Phase 1
+✅ **Released** - Available on [PyPI](https://pypi.org/project/ts-topy/)
 
 ## License
 
