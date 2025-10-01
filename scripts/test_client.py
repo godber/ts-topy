@@ -3,7 +3,7 @@
 
 import argparse
 import sys
-from py_ts_top.client import TerasliceClient
+from ts_topy.client import TerasliceClient
 
 
 def main():

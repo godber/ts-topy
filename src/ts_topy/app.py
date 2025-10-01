@@ -7,7 +7,7 @@ from textual.containers import Container, VerticalScroll, Vertical, Horizontal
 from textual.screen import ModalScreen
 from textual.widgets import Header, Footer, Static, DataTable, Button, Input
 
-from py_ts_top.client import TerasliceClient
+from ts_topy.client import TerasliceClient
 
 
 class JsonModal(ModalScreen):

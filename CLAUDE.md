@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-py-ts-top is a Python-based monitoring tool for Teraslice distributed computing clusters. It provides a real-time terminal UI (TUI) built with Textual to monitor cluster state, jobs, execution contexts, controllers, and workers.
+ts-topy is a Python-based monitoring tool for Teraslice distributed computing clusters. It provides a real-time terminal UI (TUI) built with Textual to monitor cluster state, jobs, execution contexts, controllers, and workers.
 
 ## Commands
 
@@ -15,36 +15,36 @@ py-ts-top is a Python-based monitoring tool for Teraslice distributed computing 
 uv sync
 
 # Run the application
-uv run py-ts-top
+uv run ts-topy
 
 # Run with custom options
-uv run py-ts-top http://localhost:5678 --interval 5 --request-timeout 30
+uv run ts-topy http://localhost:5678 --interval 5 --request-timeout 30
 ```
 
 ## Architecture
 
 ### Data Flow
 
-1. **TerasliceClient** (`src/py_ts_top/client.py`) - HTTP client that fetches data from Teraslice API endpoints:
+1. **TerasliceClient** (`src/ts_topy/client.py`) - HTTP client that fetches data from Teraslice API endpoints:
    - `/v1/cluster/state` - Cluster nodes and workers
    - `/v1/cluster/controllers` - Active execution controllers
    - `/v1/jobs` - All jobs
    - `/v1/ex` - Execution contexts
 
-2. **Pydantic Models** (`src/py_ts_top/models.py`) - Data validation and parsing:
+2. **Pydantic Models** (`src/ts_topy/models.py`) - Data validation and parsing:
    - `ClusterState` - Contains nodes and workers with computed properties
    - `Controller` - Execution controller (slicer) information
    - `Job` - Job configuration and status
    - `ExecutionContext` - Execution context state with slicer stats
    - Custom validators handle "N/A" values from API
 
-3. **Textual App** (`src/py_ts_top/app.py`) - TUI application:
+3. **Textual App** (`src/ts_topy/app.py`) - TUI application:
    - Grid layout with 3 data tables (execution contexts, controllers, jobs)
    - Threaded data fetching to prevent UI blocking
    - Auto-refresh timer based on interval parameter
    - Cluster summary statistics displayed at top
 
-4. **CLI Entry Point** (`src/py_ts_top/__main__.py`) - Typer-based CLI with arguments:
+4. **CLI Entry Point** (`src/ts_topy/__main__.py`) - Typer-based CLI with arguments:
    - `url` - Teraslice master URL (default: http://localhost:5678)
    - `--interval/-i` - Refresh interval in seconds (default: 5)
    - `--request-timeout` - HTTP timeout in seconds (default: 10)

@@ -1,5 +1,5 @@
 [project]
-name = "py-ts-top"
+name = "ts-topy"
 version = "0.1.0"
 description = "A Python-based monitoring tool for Teraslice distributed computing clusters"
 readme = "README.md"
@@ -16,7 +16,7 @@ authors = [
 license = { text = "MIT" }
 
 [project.scripts]
-py-ts-top = "py_ts_top.__main__:app"
+ts-topy = "ts_topy.__main__:app"
 
 [build-system]
 requires = ["hatchling"]

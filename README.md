@@ -1,4 +1,4 @@
-# py-ts-top
+# ts-topy
 
 A Python-based monitoring tool for Teraslice distributed computing clusters, built with Textual.
 
@@ -55,27 +55,27 @@ This is a rewrite of [teraslice-top](https://github.com/godber/teraslice-top) in
 
 ```bash
 # Coming soon
-uv tool install py-ts-top
+uv tool install ts-topy
 ```
 
 ## Usage
 
 ```bash
 # Connect to localhost:5678 (default)
-py-ts-top
+ts-topy
 
 # Specify custom URL
-py-ts-top https://teraslice.example.com:8000
+ts-topy https://teraslice.example.com:8000
 
 # Set refresh interval (default: 5s)
-py-ts-top http://localhost:5678 --interval 5
-py-ts-top http://localhost:5678 -i 5
+ts-topy http://localhost:5678 --interval 5
+ts-topy http://localhost:5678 -i 5
 
 # Set request timeout (default: 10s)
-py-ts-top http://localhost:5678 --request-timeout 30
+ts-topy http://localhost:5678 --request-timeout 30
 
 # All options
-py-ts-top https://teraslice.example.com:8000 -i 5 --request-timeout 30
+ts-topy https://teraslice.example.com:8000 -i 5 --request-timeout 30
 ```
 
 ## Development
@@ -88,7 +88,7 @@ uv init
 uv sync
 
 # Run the application
-uv run py-ts-top
+uv run ts-topy
 ```
 
 ## Development Status

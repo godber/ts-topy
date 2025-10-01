@@ -4,7 +4,7 @@ from typing import Any
 
 import httpx
 
-from py_ts_top.models import ClusterState, Controller, ExecutionContext, Job
+from ts_topy.models import ClusterState, Controller, ExecutionContext, Job
 
 
 class TerasliceClient:

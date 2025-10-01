@@ -1,10 +1,10 @@
-"""Main entry point for py-ts-top CLI."""
+"""Main entry point for ts-topy CLI."""
 
 from typing import Annotated
 
 import typer
 
-from py_ts_top.app import TerasliceApp
+from ts_topy.app import TerasliceApp
 
 app = typer.Typer()
 
