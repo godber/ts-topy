@@ -523,5 +523,6 @@ class TerasliceApp(App):
 
     def action_quit(self) -> None:
         """Quit the application."""
-        self.client.close()
+        # Exit immediately without waiting for HTTP requests to complete
+        # The httpx client will be cleaned up when the process exits
         self.exit()
