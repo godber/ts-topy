@@ -3,9 +3,9 @@
 import json
 
 from textual.app import App, ComposeResult
-from textual.containers import Container, VerticalScroll, Vertical
+from textual.containers import Container, VerticalScroll, Vertical, Horizontal
 from textual.screen import ModalScreen
-from textual.widgets import Header, Footer, Static, DataTable, Button
+from textual.widgets import Header, Footer, Static, DataTable, Button, Input
 
 from py_ts_top.client import TerasliceClient
 
@@ -103,12 +103,21 @@ class TerasliceApp(App):
         background: $panel;
     }
 
+    #filter-container {
+        height: auto;
+        padding: 0 2;
+    }
+
+    #filter-input {
+        width: 100%;
+    }
+
     #main-grid {
         layout: grid;
         grid-size: 2 2;
         grid-rows: 1fr 1fr;
         grid-columns: 1fr 1fr;
-        height: 100%;
+        height: 1fr;
     }
 
     .table-container {
@@ -135,7 +144,10 @@ class TerasliceApp(App):
 
     BINDINGS = [
         ("q", "quit", "Quit"),
+        ("ctrl+c", "quit", "Quit"),
         ("r", "refresh", "Refresh"),
+        ("escape", "blur_filter", "Blur Filter"),
+        ("ctrl+x", "clear_filter", "Clear Filter"),
     ]
 
     def __init__(
@@ -159,11 +171,16 @@ class TerasliceApp(App):
         self.job_id_map: dict[int, str] = {}  # Maps row index to full job_id
         self.controller_id_map: dict[int, str] = {}  # Maps row index to ex_id
         self.ex_id_map: dict[int, str] = {}  # Maps row index to ex_id
+        self.filter_text: str = ""  # Global filter text
 
     def compose(self) -> ComposeResult:
         """Create child widgets for the app."""
         yield Header()
         yield Static("Loading cluster data...", id="cluster-info")
+        yield Container(
+            Input(placeholder="Filter by Name, Ex ID, or Job ID...", id="filter-input"),
+            id="filter-container",
+        )
         yield Container(
             # Row 1: Execution Contexts (full width)
             Container(
@@ -332,16 +349,56 @@ class TerasliceApp(App):
         info_widget = self.query_one("#cluster-info", Static)
         info_widget.update(cluster_info)
 
+        # Apply global filter
+        filter_lower = self.filter_text
+
+        # Filter controllers (by name or ex_id)
+        filtered_controllers = []
+        filtered_controller_id_map = {}
+        for idx, row in enumerate(controller_rows):
+            ctrl_id = controller_id_map[idx]
+            name = row[0].lower()  # Name column
+            ex_id = ctrl_id.lower()
+            if not filter_lower or filter_lower in name or filter_lower in ex_id:
+                filtered_idx = len(filtered_controllers)
+                filtered_controllers.append(row)
+                filtered_controller_id_map[filtered_idx] = ctrl_id
+
+        # Filter jobs (by name or job_id)
+        filtered_jobs = []
+        filtered_job_id_map = {}
+        for idx, row in enumerate(job_rows):
+            job_id = job_id_map[idx]
+            name = row[0].lower()  # Name column
+            job_id_lower = job_id.lower()
+            if not filter_lower or filter_lower in name or filter_lower in job_id_lower:
+                filtered_idx = len(filtered_jobs)
+                filtered_jobs.append(row)
+                filtered_job_id_map[filtered_idx] = job_id
+
+        # Filter execution contexts (by name, ex_id, or job_id)
+        filtered_ex = []
+        filtered_ex_id_map = {}
+        for idx, row in enumerate(ex_rows):
+            ex_id = ex_id_map[idx]
+            name = row[0].lower()  # Name column
+            ex_id_lower = ex_id.lower()
+            job_id_lower = row[2].lower()  # Job ID column (shortened)
+            if not filter_lower or filter_lower in name or filter_lower in ex_id_lower or filter_lower in job_id_lower:
+                filtered_idx = len(filtered_ex)
+                filtered_ex.append(row)
+                filtered_ex_id_map[filtered_idx] = ex_id
+
         # Update controllers table - preserve selection by ID
         controllers_table = self.query_one("#controllers-table", DataTable)
         selected_ctrl_id = self.controller_id_map.get(controllers_table.cursor_row)
         controllers_table.clear()
-        for row in controller_rows:
+        for row in filtered_controllers:
             controllers_table.add_row(*row)
-        self.controller_id_map = controller_id_map
+        self.controller_id_map = filtered_controller_id_map
         # Find the same controller in the new data
         if selected_ctrl_id:
-            for idx, ctrl_id in controller_id_map.items():
+            for idx, ctrl_id in filtered_controller_id_map.items():
                 if ctrl_id == selected_ctrl_id:
                     controllers_table.move_cursor(row=idx)
                     break
@@ -350,12 +407,12 @@ class TerasliceApp(App):
         jobs_table = self.query_one("#jobs-table", DataTable)
         selected_job_id = self.job_id_map.get(jobs_table.cursor_row)
         jobs_table.clear()
-        for row in job_rows:
+        for row in filtered_jobs:
             jobs_table.add_row(*row)
-        self.job_id_map = job_id_map
+        self.job_id_map = filtered_job_id_map
         # Find the same job in the new data
         if selected_job_id:
-            for idx, job_id in job_id_map.items():
+            for idx, job_id in filtered_job_id_map.items():
                 if job_id == selected_job_id:
                     jobs_table.move_cursor(row=idx)
                     break
@@ -364,12 +421,12 @@ class TerasliceApp(App):
         ex_table = self.query_one("#execution-contexts-table", DataTable)
         selected_ex_id = self.ex_id_map.get(ex_table.cursor_row)
         ex_table.clear()
-        for row in ex_rows:
+        for row in filtered_ex:
             ex_table.add_row(*row)
-        self.ex_id_map = ex_id_map
+        self.ex_id_map = filtered_ex_id_map
         # Find the same execution context in the new data
         if selected_ex_id:
-            for idx, ex_id in ex_id_map.items():
+            for idx, ex_id in filtered_ex_id_map.items():
                 if ex_id == selected_ex_id:
                     ex_table.move_cursor(row=idx)
                     break
@@ -381,6 +438,39 @@ class TerasliceApp(App):
     def action_refresh(self) -> None:
         """Manual refresh action (triggered by 'r' key)."""
         self.refresh_data()
+
+    def action_blur_filter(self) -> None:
+        """Blur the filter input to allow app-level keybindings."""
+        filter_input = self.query_one("#filter-input", Input)
+        if filter_input.has_focus:
+            self.set_focus(None)
+
+    def action_clear_filter(self) -> None:
+        """Clear the filter input."""
+        filter_input = self.query_one("#filter-input", Input)
+        filter_input.value = ""
+        self.filter_text = ""
+        self.refresh_data()
+
+    def on_input_changed(self, event: Input.Changed) -> None:
+        """Handle filter input changes."""
+        if event.input.id == "filter-input":
+            self.filter_text = event.value.lower()
+            # Trigger a refresh to apply the filter
+            self.refresh_data()
+
+    def on_key(self, event) -> None:
+        """Handle key events globally."""
+        # Allow Ctrl+C to quit even when input is focused
+        if event.key == "ctrl+c":
+            self.action_quit()
+            event.prevent_default()
+            event.stop()
+        # Allow Ctrl+X to clear filter even when input is focused
+        elif event.key == "ctrl+x":
+            self.action_clear_filter()
+            event.prevent_default()
+            event.stop()
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         """Handle row selection in data tables."""
