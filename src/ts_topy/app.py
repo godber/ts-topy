@@ -5,7 +5,8 @@ import json
 from textual.app import App, ComposeResult
 from textual.containers import Container, VerticalScroll, Vertical, Horizontal
 from textual.screen import ModalScreen
-from textual.widgets import Header, Footer, Static, DataTable, Button, Input
+from textual.widgets import Header, Footer, Static, DataTable, Button, Input, Select, OptionList
+from textual.widgets.option_list import Option
 
 from ts_topy.client import TerasliceClient
 
@@ -137,6 +138,33 @@ class TerasliceApp(App):
         column-span: 2;
     }
 
+    #execution-contexts-content {
+        height: 1fr;
+        layout: horizontal;
+    }
+
+    #execution-contexts-table {
+        width: 3fr;
+        height: 100%;
+    }
+
+    #status-filter-section {
+        width: 1fr;
+        height: 100%;
+        border-left: solid $primary;
+        padding: 0 1;
+    }
+
+    #status-filter-header {
+        text-style: bold;
+        background: $boost;
+        padding: 0 1;
+    }
+
+    #status-option-list {
+        height: 1fr;
+    }
+
     DataTable {
         height: 100%;
     }
@@ -148,6 +176,7 @@ class TerasliceApp(App):
         ("r", "refresh", "Refresh"),
         ("escape", "blur_filter", "Blur Filter"),
         ("ctrl+x", "clear_filter", "Clear Filter"),
+        ("ctrl+s", "clear_status_filter", "Clear Status Filter"),
     ]
 
     def __init__(
@@ -172,6 +201,7 @@ class TerasliceApp(App):
         self.controller_id_map: dict[int, str] = {}  # Maps row index to ex_id
         self.ex_id_map: dict[int, str] = {}  # Maps row index to ex_id
         self.filter_text: str = ""  # Global filter text
+        self.status_filter: set[str] = {"running"}  # Status filter for execution contexts (multi-select)
 
     def compose(self) -> ComposeResult:
         """Create child widgets for the app."""
@@ -182,10 +212,18 @@ class TerasliceApp(App):
             id="filter-container",
         )
         yield Container(
-            # Row 1: Execution Contexts (full width)
+            # Row 1: Execution Contexts (full width, with status filter embedded)
             Container(
                 Static("Execution Contexts", classes="table-header"),
-                DataTable(id="execution-contexts-table"),
+                Container(
+                    DataTable(id="execution-contexts-table"),
+                    Container(
+                        Static("Status Filter", id="status-filter-header"),
+                        OptionList(id="status-option-list"),
+                        id="status-filter-section",
+                    ),
+                    id="execution-contexts-content",
+                ),
                 classes="table-container",
                 id="execution-contexts-container",
             ),
@@ -223,6 +261,9 @@ class TerasliceApp(App):
         ex_table = self.query_one("#execution-contexts-table", DataTable)
         ex_table.add_columns("Name", "Ex ID", "Job ID", "Status", "Workers", "Slicers", "Processed", "Failed", "Created", "Updated")
         ex_table.cursor_type = "row"
+
+        # Update status filter display to show "running" as selected
+        self.update_status_filter_display()
 
         # Initial fetch
         self.run_worker(self.fetch_data, thread=True, exclusive=True)
@@ -376,7 +417,7 @@ class TerasliceApp(App):
                 filtered_jobs.append(row)
                 filtered_job_id_map[filtered_idx] = job_id
 
-        # Filter execution contexts (by name, ex_id, or job_id)
+        # Filter execution contexts (by name, ex_id, job_id, and status)
         filtered_ex = []
         filtered_ex_id_map = {}
         for idx, row in enumerate(ex_rows):
@@ -384,7 +425,15 @@ class TerasliceApp(App):
             name = row[0].lower()  # Name column
             ex_id_lower = ex_id.lower()
             job_id_lower = row[2].lower()  # Job ID column (shortened)
-            if not filter_lower or filter_lower in name or filter_lower in ex_id_lower or filter_lower in job_id_lower:
+            status = row[3].lower()  # Status column
+
+            # Apply text filter (name, ex_id, or job_id)
+            text_matches = not filter_lower or filter_lower in name or filter_lower in ex_id_lower or filter_lower in job_id_lower
+
+            # Apply status filter (multi-select: must be in the selected set, or no filter if set is empty)
+            status_matches = not self.status_filter or status in self.status_filter
+
+            if text_matches and status_matches:
                 filtered_idx = len(filtered_ex)
                 filtered_ex.append(row)
                 filtered_ex_id_map[filtered_idx] = ex_id
@@ -431,6 +480,29 @@ class TerasliceApp(App):
                     ex_table.move_cursor(row=idx)
                     break
 
+    def update_status_filter_display(self) -> None:
+        """Update the status filter OptionList to show selected items with checkmarks."""
+        status_list = self.query_one("#status-option-list", OptionList)
+
+        # Save current highlight position
+        current_highlight = status_list.highlighted
+
+        # Clear and rebuild options with checkmarks for selected statuses
+        status_list.clear_options()
+        statuses = [
+            "completed", "failed", "failing", "initializing", "paused",
+            "pending", "recovering", "rejected", "running", "scheduling",
+            "stopped", "stopping", "terminated"
+        ]
+
+        for status in statuses:
+            prefix = "✓ " if status in self.status_filter else "  "
+            status_list.add_option(Option(f"{prefix}{status}", id=status))
+
+        # Restore highlight position
+        if current_highlight is not None:
+            status_list.highlighted = current_highlight
+
     def refresh_data(self) -> None:
         """Refresh data (called by timer or manually)."""
         self.run_worker(self.fetch_data, thread=True, exclusive=True)
@@ -452,10 +524,30 @@ class TerasliceApp(App):
         self.filter_text = ""
         self.refresh_data()
 
+    def action_clear_status_filter(self) -> None:
+        """Clear the status filter."""
+        self.status_filter.clear()
+        self.update_status_filter_display()
+        self.refresh_data()
+
     def on_input_changed(self, event: Input.Changed) -> None:
         """Handle filter input changes."""
         if event.input.id == "filter-input":
             self.filter_text = event.value.lower()
+            # Trigger a refresh to apply the filter
+            self.refresh_data()
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        """Handle status filter option selection."""
+        if event.option_list.id == "status-option-list":
+            option_id = str(event.option.id)
+            # Toggle the status in the filter set
+            if option_id in self.status_filter:
+                self.status_filter.remove(option_id)
+            else:
+                self.status_filter.add(option_id)
+            # Update the display to show checkmarks
+            self.update_status_filter_display()
             # Trigger a refresh to apply the filter
             self.refresh_data()
 
@@ -469,6 +561,11 @@ class TerasliceApp(App):
         # Allow Ctrl+X to clear filter even when input is focused
         elif event.key == "ctrl+x":
             self.action_clear_filter()
+            event.prevent_default()
+            event.stop()
+        # Allow Ctrl+S to clear status filter
+        elif event.key == "ctrl+s":
+            self.action_clear_status_filter()
             event.prevent_default()
             event.stop()
 

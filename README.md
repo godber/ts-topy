@@ -45,12 +45,10 @@ ts-topy https://teraslice.example.com:8000 -i 5 --request-timeout 30
 ## Features
 
 - **Real-time monitoring** of Teraslice cluster state
-- **Five-pane display** showing:
-  - Nodes
-  - Workers
+- **Three-pane display** showing:
+  - Execution Contexts
   - Controllers
   - Jobs
-  - Execution Contexts
 - **Global search/filter** across all data
 - **Auto-refresh** with configurable intervals
 - **Terminal UI** built with Textual
@@ -80,19 +78,19 @@ This project uses GitHub Actions for automated releases to PyPI. To create a new
 
 1. **Bump the version** using the bump script:
 
-  ```bash
-  # For a patch release (bug fixes)
-  python scripts/bump_version.py patch
+   ```bash
+   # For a patch release (bug fixes)
+   uv run scripts/bump_version.py patch
 
-  # For a minor release (new features)
-  python scripts/bump_version.py minor
+   # For a minor release (new features)
+   uv run scripts/bump_version.py minor
 
-  # For a major release (breaking changes)
-  python scripts/bump_version.py major
+   # For a major release (breaking changes)
+   uv run scripts/bump_version.py major
 
-  # Or set a specific version
-  python scripts/bump_version.py --set 1.2.3
-  ```
+   # Or set a specific version
+   uv run scripts/bump_version.py --set 1.2.3
+   ```
 
 2. **Review and commit the changes**:
 
