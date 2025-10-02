@@ -25,7 +25,7 @@ pipx install ts-topy
 ## Usage
 
 ```bash
-# Connect to localhost:5678 (default)
+# Select from or add cluster to ~/.teraslice/aliases.yaml
 ts-topy
 
 # Specify custom URL
