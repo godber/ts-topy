@@ -11,6 +11,18 @@ from textual.widgets.option_list import Option
 from ts_topy.client import TerasliceClient
 
 
+def escape_markup(text: str) -> str:
+    """Escape square brackets in text to prevent markup parsing errors.
+    
+    Args:
+        text: Text that may contain square brackets
+        
+    Returns:
+        Text with all square brackets escaped
+    """
+    return text.replace('[', '\\[').replace(']', '\\]')
+
+
 class JsonModal(ModalScreen):
     """Modal screen to display JSON data."""
 
@@ -372,8 +384,9 @@ class TerasliceApp(App):
             )
 
         except Exception as e:
-            error_msg = f"[b red]Error:[/b red] {str(e)}"
+            error_msg = f"[b red]Error:[/b red] {escape_markup(str(e))}"
             self.call_from_thread(self.update_display, error_msg, [], [], [], {}, {}, {})
+
 
     def update_display(
         self,
