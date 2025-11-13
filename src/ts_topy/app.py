@@ -8,6 +8,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Header, Footer, Static, DataTable, Button, Input, Select, OptionList
 from textual.widgets.option_list import Option
 
+from ts_topy import __version__
 from ts_topy.client import TerasliceClient
 
 
@@ -213,7 +214,11 @@ class TerasliceApp(App):
         self.controller_id_map: dict[int, str] = {}  # Maps row index to ex_id
         self.ex_id_map: dict[int, str] = {}  # Maps row index to ex_id
         self.filter_text: str = ""  # Global filter text
-        self.status_filter: set[str] = {"running"}  # Status filter for execution contexts (multi-select)
+        # Status filter for execution contexts - default to all non-terminal states
+        self.status_filter: set[str] = {
+            "failing", "initializing", "paused", "pending",
+            "recovering", "running", "scheduling", "stopping"
+        }
 
     def compose(self) -> ComposeResult:
         """Create child widgets for the app."""
@@ -257,7 +262,7 @@ class TerasliceApp(App):
     def on_mount(self) -> None:
         """Called when app starts."""
         self.title = "Teraslice Top"
-        self.sub_title = self.url
+        self.sub_title = f"(v{__version__}) {self.url}"
 
         # Set up controllers table
         controllers_table = self.query_one("#controllers-table", DataTable)
@@ -274,7 +279,7 @@ class TerasliceApp(App):
         ex_table.add_columns("Name", "Ex ID", "Job ID", "Status", "Workers", "Slicers", "Processed", "Failed", "Created", "Updated")
         ex_table.cursor_type = "row"
 
-        # Update status filter display to show "running" as selected
+        # Update status filter display to show all non-terminal states as selected
         self.update_status_filter_display()
 
         # Initial fetch

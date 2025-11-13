@@ -4,6 +4,7 @@ from typing import Annotated, Optional
 
 import typer
 
+from ts_topy import __version__
 from ts_topy.aliases import ClusterAliases
 from ts_topy.app import TerasliceApp
 from ts_topy.cluster_selector import ClusterSelectorApp
@@ -11,11 +12,19 @@ from ts_topy.cluster_selector import ClusterSelectorApp
 app = typer.Typer()
 
 
+def version_callback(value: bool) -> None:
+    """Print version and exit."""
+    if value:
+        typer.echo(f"v{__version__}")
+        raise typer.Exit()
+
+
 @app.command()
 def main(
     url: Annotated[Optional[str], typer.Argument(help="Teraslice master URL (e.g., http://localhost:5678)")] = None,
     interval: Annotated[int, typer.Option("--interval", "-i", help="Refresh interval in seconds")] = 5,
     request_timeout: Annotated[int, typer.Option("--request-timeout", help="HTTP request timeout in seconds")] = 10,
+    version: Annotated[Optional[bool], typer.Option("--version", "-v", callback=version_callback, is_eager=True, help="Show version and exit")] = None,
 ) -> None:
     """Monitor a Teraslice cluster in real-time."""
     # Determine the URL to use
