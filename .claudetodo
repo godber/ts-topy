@@ -1,0 +1,85 @@
+# Phase 1: Project Setup & Data Layer
+
+## Step 1: Initial Setup
+- [x] Initialize uv project with `uv init`
+- [x] Configure pyproject.toml with project metadata
+- [x] Add dependencies: httpx, pydantic, textual, typer
+- [x] Create src/py_ts_top/ directory structure
+- [x] Create __init__.py and __main__.py
+
+## Step 2: API Client Foundation
+- [x] Research Teraslice API endpoints (check original JS code or docs)
+- [x] Create src/py_ts_top/client.py
+- [x] Implement TerasliceClient class with httpx
+- [x] Add connection method with host/port configuration
+- [x] Implement fetch methods for all endpoints
+
+## Step 3: Data Models
+- [x] Create src/py_ts_top/models.py
+- [x] Define Node model (Pydantic)
+- [x] Define Worker model (Pydantic)
+- [x] Define Controller model (Pydantic)
+- [x] Define Job model (Pydantic)
+- [x] Define ExecutionContext model (Pydantic)
+- [x] Define ClusterState model (Pydantic)
+- [x] Define SlicerStats model (Pydantic)
+- [x] Define Operation model (Pydantic)
+- [x] Update client.py to return typed models
+- [x] Update test_client.py to use models
+
+## Step 4: Complete API Client
+- [x] Add fetch_nodes() method
+- [x] Add fetch_workers() method
+- [x] Add fetch_controllers() method
+- [x] Add fetch_jobs() method
+- [x] Add fetch_execution_contexts() method
+- [x] Add fetch_all() method to get everything at once
+
+## Step 5: Testing & Validation
+- [x] Create simple test script (scripts/test_client.py)
+- [x] Verify connection to Teraslice cluster (requires live cluster)
+- [x] Test all 5 endpoint fetches (requires live cluster)
+- [x] Validate data parsing with Pydantic models
+- [x] Handle N/A values and optional fields
+- [x] Add pagination support for jobs and execution contexts
+
+# Phase 2: Basic Textual UI
+
+## Step 6: Hello World Textual App
+- [x] Create src/py_ts_top/app.py
+- [x] Implement basic Textual App class
+- [x] Connect to Teraslice cluster
+- [x] Display simple text showing cluster info
+- [x] Wire up CLI to launch the app
+- [x] Add error handling for connection failures
+- [x] Add keybindings (q to quit, r to refresh)
+
+## Step 7: Single Pane with DataTable
+- [x] Add DataTable widget for one endpoint (start with Jobs)
+- [x] Populate table with real data
+- [x] Add columns for key fields (Name, Job ID, Lifecycle, Workers, Active, Ops)
+- [x] Test scrolling and display
+- [x] Fetch jobs with pagination (size=1000)
+
+## Step 8: Three Pane Layout
+- [x] Design layout (2x2 grid with execution contexts spanning 2 columns on row 1)
+- [x] Add DataTables for 3 main types (Controllers, Jobs, Execution Contexts)
+- [x] Add headers/labels for each pane
+- [x] Define columns for each table
+- [x] Fetch all data from API
+- [x] Populate all tables with data
+- [x] Show nodes/workers summary in cluster info bar
+- [x] Remove Nodes and Workers tables (kept in summary only)
+- [x] Sort data by timestamps (most recent first)
+- [x] Add timestamp columns (Created/Updated for Jobs and Execution Contexts, Started for Controllers)
+
+## Step 9: Auto-refresh
+- [x] Add set_interval timer
+- [x] Fetch data periodically (uses --interval flag, default 2s)
+- [x] Update all tables
+- [x] Handle errors gracefully (already done in fetch_data)
+- [x] Keep manual refresh working (r key)
+- [x] Make API calls concurrent (each panel updates independently)
+- [x] Stagger panel start times by 1 second
+- [x] Each panel has its own worker thread
+- [x] Cluster state: t=0, Controllers: t=1s, Jobs: t=2s, Execution Contexts: t=3s
