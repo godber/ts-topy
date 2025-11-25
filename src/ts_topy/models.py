@@ -55,7 +55,11 @@ class Node(BaseModel):
 
 
 class ClusterState(BaseModel):
-    """Overall cluster state containing all nodes."""
+    """Overall cluster state containing all nodes.
+
+    NOTE: This model is currently disused. The /v1/cluster/state endpoint is no longer
+    fetched during regular app updates to reduce API calls. Kept for potential future use.
+    """
 
     nodes: dict[str, Node]
 

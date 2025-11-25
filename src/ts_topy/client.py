@@ -54,6 +54,9 @@ class TerasliceClient:
     def fetch_cluster_state(self) -> ClusterState:
         """Fetch overall cluster state including nodes and workers.
 
+        NOTE: This method is currently disused. The /v1/cluster/state endpoint is no longer
+        fetched during regular app updates to reduce API calls. Kept for potential future use.
+
         Returns:
             ClusterState object
         """

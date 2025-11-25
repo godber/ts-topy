@@ -292,7 +292,6 @@ class TerasliceApp(App):
         """Fetch data from Teraslice cluster (runs in thread)."""
         try:
             # Fetch all data
-            cluster_state = self.client.fetch_cluster_state()
             controllers = self.client.fetch_controllers()
             jobs = self.client.fetch_jobs(size=1000)
             execution_contexts = self.client.fetch_execution_contexts(size=1000)
@@ -308,9 +307,6 @@ class TerasliceApp(App):
 
             # Format cluster info
             cluster_info = (
-                f"[b]Nodes:[/b] {cluster_state.total_nodes}  "
-                f"[b]Workers:[/b] {cluster_state.active_workers}/{cluster_state.total_workers}  "
-                f"[b]Available:[/b] {cluster_state.available_workers}  "
                 f"[b]Controllers:[/b] {len(controllers)}  "
                 f"[b]Jobs:[/b] {len(jobs)}  "
                 f"[b]Execution Contexts:[/b] {len(execution_contexts)}"
