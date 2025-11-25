@@ -52,5 +52,46 @@ def main(
     tui_app.run()
 
 
+@app.command()
+def mock_server(
+    host: Annotated[str, typer.Option("--host", "-h", help="Host to bind the server to")] = "127.0.0.1",
+    port: Annotated[int, typer.Option("--port", "-p", help="Port to run the server on")] = 5678,
+    reload: Annotated[bool, typer.Option("--reload", help="Enable auto-reload on code changes")] = False,
+) -> None:
+    """Run a mock Teraslice API server for testing and development.
+
+    This starts a FastAPI server that mimics the Teraslice API with randomly
+    generated mock data. Requires the 'mock' optional dependencies:
+
+    uv sync --extra mock
+    """
+    try:
+        import uvicorn
+    except ImportError:
+        typer.echo("Error: FastAPI and uvicorn are required to run the mock server.")
+        typer.echo("Install with: uv sync --extra mock")
+        raise typer.Exit(code=1)
+
+    typer.echo(f"Starting mock Teraslice API server on http://{host}:{port}")
+    typer.echo("Press Ctrl+C to stop the server")
+    typer.echo("")
+    typer.echo("Available endpoints:")
+    typer.echo("  GET  /v1/cluster/state")
+    typer.echo("  GET  /v1/cluster/controllers")
+    typer.echo("  GET  /v1/jobs")
+    typer.echo("  GET  /v1/jobs/{job_id}")
+    typer.echo("  GET  /v1/ex")
+    typer.echo("  GET  /v1/ex/{ex_id}")
+    typer.echo("  POST /v1/data/refresh  (regenerate all mock data)")
+    typer.echo("")
+
+    uvicorn.run(
+        "ts_topy.mock_server:app",
+        host=host,
+        port=port,
+        reload=reload,
+    )
+
+
 if __name__ == "__main__":
     app()
