@@ -72,6 +72,23 @@ uv sync
 uv run ts-topy
 ```
 
+### Mock Server
+
+For development and testing without a real Teraslice cluster, you can use the built-in mock server:
+
+```bash
+# Install mock server dependencies
+uv sync --extra mock
+
+# Start the mock server
+uv run ts-topy mock-server
+
+# In another terminal, monitor the mock server
+uv run ts-topy http://localhost:5678
+```
+
+See [MOCK_SERVER.md](MOCK_SERVER.md) for detailed documentation on the mock server, including all available endpoints, options, and mock data characteristics.
+
 ## Releasing
 
 This project uses GitHub Actions for automated releases to PyPI. To create a new release:

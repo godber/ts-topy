@@ -116,14 +116,72 @@ Regenerates all mock data. Useful for getting a fresh set of random data.
 
 ## Mock Data Characteristics
 
-The mock server generates realistic-looking data with:
+The mock server generates realistic, time-aware data that simulates a live Teraslice cluster:
 
-- Random UUIDs for IDs
-- Realistic timestamps (created/updated dates within the last 30 days)
-- Various job and execution context states (running, completed, stopped, failed, pending)
-- Random worker counts and statistics
-- Multiple operation types (elasticsearch_reader, noop, elasticsearch_bulk)
-- Lifecycle types (once, persistent)
+### Data Consistency
+
+- **Jobs, Execution Contexts, and Controllers are synchronized**:
+  - Execution contexts inherit `job_id`, `name`, `lifecycle`, `workers`, and `operations` from their parent job
+  - Controllers inherit `ex_id`, `job_id`, `name`, and worker counts from their execution context
+  - All three share the same `job_id` for easy tracking
+
+### State Management
+
+- **Dynamic state transitions** following the Teraslice state flowchart:
+  - **INITIAL states** (pending → scheduling → initializing → running): Progress in 3-4 second intervals
+  - **RUNNING states**: Most executions stay in "running" for long periods (hours/days)
+  - **Transient states**:
+    - `recovering` → `running` (after 3 minutes)
+    - `failing` → `failed`/`terminated` (after 2 minutes)
+    - `stopping` → `stopped` (after 60 seconds)
+  - **TERMINAL states** (completed, stopped, failed, terminated, rejected): Never change
+  - **Invalid transitions are prevented** (e.g., `stopping` cannot go to `running`)
+
+### Worker Statistics
+
+- **Workers running almost always equals total requested** (95% of the time):
+  - `workers_joined` = total workers (95%) or slightly less (5%)
+  - `workers_active` = workers_joined (95%) or slightly less (5%)
+  - `workers_available` = slots not yet filled
+  - Disconnected/reconnected workers are rare (<25% of joined workers)
+
+### Slice Statistics
+
+- **Processed slices increase steadily over time**:
+  - ~1 slice per 10 seconds per active worker
+  - Grows linearly with execution duration
+
+- **Failed slices are mostly zero**:
+  - 90% of executions: `failed = 0`
+  - 10% of executions: `failed = 0.05-0.5%` of processed slices
+
+- **Queued slices equal active worker count**:
+  - `queued = workers_active` (one slice per worker)
+
+- **Subslices** are 1.0-1.5x the number of processed slices
+
+### Lifecycle Events
+
+- **Automatic job start/stop events** every 3 minutes:
+  - 50% chance of either starting a new execution or stopping an existing one
+  - New executions start in `pending` state and progress naturally
+  - Stopped executions transition to `stopped` state with final statistics
+
+### Data Distribution
+
+- **Execution age distribution**:
+  - 20% are fresh (< 10 seconds) - in INITIAL states
+  - 15% are recent (10s - 5 minutes)
+  - 20% are hours old
+  - 45% are days/weeks/months old (long-running)
+
+- **State distribution**: Random UUIDs, realistic timestamps, multiple operation types (elasticsearch_reader, noop, elasticsearch_bulk), and lifecycle types (once, persistent)
+
+### Real-Time Updates
+
+- States update automatically based on elapsed real time (no refresh needed)
+- Slice statistics recalculate on each query to show current progress
+- Controllers are dynamically generated for current non-terminal executions only
 
 Data is regenerated on server startup and can be refreshed via the `/v1/data/refresh` endpoint.
 
