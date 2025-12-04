@@ -16,6 +16,12 @@ authors = [
 ]
 license = { text = "MIT" }
 
+[project.optional-dependencies]
+mock = [
+    "fastapi>=0.115.0",
+    "uvicorn>=0.32.0",
+]
+
 [project.scripts]
 ts-topy = "ts_topy.__main__:app"
 
