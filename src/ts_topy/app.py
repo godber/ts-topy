@@ -306,10 +306,11 @@ class TerasliceApp(App):
             )
 
             # Format cluster info
+            running_contexts = sum(1 for ex in execution_contexts if ex.status == "running")
             cluster_info = (
                 f"[b]Controllers:[/b] {len(controllers)}  "
                 f"[b]Jobs:[/b] {len(jobs)}  "
-                f"[b]Execution Contexts:[/b] {len(execution_contexts)}"
+                f"[b]Running Jobs:[/b] {running_contexts}"
             )
 
             # Prepare controller rows and ID mapping
