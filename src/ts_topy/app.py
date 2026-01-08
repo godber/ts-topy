@@ -5,7 +5,7 @@ import json
 from textual.app import App, ComposeResult
 from textual.containers import Container, VerticalScroll, Vertical, Horizontal
 from textual.screen import ModalScreen
-from textual.widgets import Header, Footer, Static, DataTable, Button, Input, Select, OptionList
+from textual.widgets import Header, Footer, Static, DataTable, Button, Input, Select, OptionList, TabbedContent, TabPane
 from textual.widgets.option_list import Option
 
 from ts_topy import __version__
@@ -96,6 +96,108 @@ class JsonModal(ModalScreen):
             VerticalScroll(Static(formatted_json)),
             Button("Close", variant="primary", id="close-button"),
         )
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle button press."""
+        if event.button.id == "close-button":
+            self.dismiss()
+
+
+class TabbedJsonModal(ModalScreen):
+    """Modal screen to display JSON data in tabs."""
+
+    BINDINGS = [
+        ("escape", "dismiss", "Close"),
+        ("q", "dismiss", "Close"),
+    ]
+
+    DEFAULT_CSS = """
+    TabbedJsonModal {
+        align: center middle;
+    }
+
+    TabbedJsonModal > Vertical {
+        width: 90%;
+        height: 90%;
+        background: $panel;
+        border: thick $primary;
+    }
+
+    TabbedJsonModal .modal-title {
+        width: 100%;
+        height: auto;
+        padding: 1 2;
+        background: $primary;
+    }
+
+    TabbedJsonModal TabbedContent {
+        width: 100%;
+        height: 1fr;
+    }
+
+    TabbedJsonModal ContentSwitcher {
+        width: 100%;
+        height: 1fr;
+    }
+
+    TabbedJsonModal TabPane {
+        padding: 1 2;
+        height: 1fr;
+    }
+
+    TabbedJsonModal VerticalScroll {
+        width: 100%;
+        height: 1fr;
+    }
+
+    TabbedJsonModal Button {
+        width: 20;
+        margin: 1 2;
+    }
+    """
+
+    def __init__(
+        self,
+        tabs: list[tuple[str, dict, str | None]],
+        title: str = "Details",
+        active_tab: str | None = None,
+    ) -> None:
+        """Initialize the tabbed JSON modal.
+
+        Args:
+            tabs: List of tuples (tab_label, json_data, url)
+            title: Title for the modal
+            active_tab: ID of tab to show by default (derived from label if not set)
+        """
+        super().__init__()
+        self.tabs_data = tabs
+        self.modal_title = title
+        self.active_tab = active_tab
+
+    def compose(self) -> ComposeResult:
+        """Create child widgets."""
+        from rich.text import Text
+
+        title = Text(self.modal_title, style="bold")
+
+        with Vertical():
+            yield Static(title, classes="modal-title")
+            with TabbedContent(initial=self.active_tab):
+                for tab_label, json_data, url in self.tabs_data:
+                    tab_id = tab_label.lower().replace(" ", "-")
+                    formatted_json = json.dumps(json_data, indent=2, default=str)
+                    # Build content with optional URL header
+                    if url:
+                        url_text = Text()
+                        url_text.append(url, style=f"link {url}")
+                        url_text.append("\n\n")
+                        url_text.append(formatted_json)
+                        content = url_text
+                    else:
+                        content = formatted_json
+                    with TabPane(tab_label, id=tab_id):
+                        yield VerticalScroll(Static(content))
+            yield Button("Close", variant="primary", id="close-button")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""
@@ -619,18 +721,38 @@ class TerasliceApp(App):
         self.push_screen(modal)
 
     def fetch_and_show_ex(self, ex_id: str) -> None:
-        """Fetch execution context details and show modal (runs in thread)."""
+        """Fetch execution context and job details, then show modal (runs in thread)."""
         try:
             ex_data = self.client.fetch_execution_context_by_id(ex_id)
-            self.call_from_thread(self.show_ex_modal, ex_data, ex_id)
+            # Also fetch the associated job
+            job_id = ex_data.get("job_id")
+            job_data = None
+            if job_id:
+                try:
+                    job_data = self.client.fetch_job_by_id(job_id)
+                except Exception:
+                    job_data = {"error": "Failed to fetch job data"}
+            self.call_from_thread(self.show_ex_modal, ex_data, ex_id, job_data)
         except Exception as e:
             error_data = {"error": str(e)}
-            self.call_from_thread(self.show_ex_modal, error_data, ex_id)
+            self.call_from_thread(self.show_ex_modal, error_data, ex_id, None)
 
-    def show_ex_modal(self, ex_data: dict, ex_id: str) -> None:
+    def show_ex_modal(self, ex_data: dict, ex_id: str, job_data: dict | None) -> None:
         """Show the execution context details modal (called from main thread)."""
         ex_url = f"{self.url}/v1/ex/{ex_id}"
-        modal = JsonModal(ex_data, title=f"Execution Context: {ex_id[:8]}", url=ex_url)
+        job_id = ex_data.get("job_id")
+        job_url = f"{self.url}/v1/jobs/{job_id}" if job_id else None
+
+        tabs = []
+        if job_data:
+            tabs.append(("Job Definition", job_data, job_url))
+        tabs.append(("Execution", ex_data, ex_url))
+
+        modal = TabbedJsonModal(
+            tabs=tabs,
+            title=f"Execution Context: {ex_id[:8]}",
+            active_tab="job-definition",  # Show job tab by default
+        )
         self.push_screen(modal)
 
     def action_quit(self) -> None:
