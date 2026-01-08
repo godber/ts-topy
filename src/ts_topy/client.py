@@ -4,7 +4,7 @@ from typing import Any
 
 import httpx
 
-from ts_topy.models import ClusterState, Controller, ExecutionContext, Job
+from ts_topy.models import Controller, ExecutionContext, Job
 
 
 class TerasliceClient:
@@ -50,18 +50,6 @@ class TerasliceClient:
         response = self.client.get(url, params=params)
         response.raise_for_status()
         return response.json()
-
-    def fetch_cluster_state(self) -> ClusterState:
-        """Fetch overall cluster state including nodes and workers.
-
-        NOTE: This method is currently disused. The /v1/cluster/state endpoint is no longer
-        fetched during regular app updates to reduce API calls. Kept for potential future use.
-
-        Returns:
-            ClusterState object
-        """
-        data = self._fetch_json("/v1/cluster/state")
-        return ClusterState(nodes=data)
 
     def fetch_controllers(self) -> list[Controller]:
         """Fetch active execution controllers.
@@ -129,16 +117,3 @@ class TerasliceClient:
             Raw JSON response for the execution context
         """
         return self._fetch_json(f"/v1/ex/{ex_id}")
-
-    def fetch_all(self) -> dict[str, Any]:
-        """Fetch data from all monitoring endpoints.
-
-        Returns:
-            Dictionary with keys: cluster_state, controllers, jobs, execution_contexts
-        """
-        return {
-            "cluster_state": self.fetch_cluster_state(),
-            "controllers": self.fetch_controllers(),
-            "jobs": self.fetch_jobs(),
-            "execution_contexts": self.fetch_execution_contexts(),
-        }

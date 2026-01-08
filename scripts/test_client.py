@@ -20,22 +20,6 @@ def main():
 
     try:
         with TerasliceClient(args.url, timeout=10) as client:
-            # Test cluster state (includes nodes and workers)
-            print("=" * 60)
-            print("CLUSTER STATE")
-            print("=" * 60)
-            cluster_state = client.fetch_cluster_state()
-            print(f"Total nodes: {cluster_state.total_nodes}")
-            print(f"Total worker slots: {cluster_state.total_workers}")
-            print(f"Active workers: {cluster_state.active_workers}")
-            print(f"Available slots: {cluster_state.available_workers}")
-            print("\nNodes:")
-            for node_name, node in cluster_state.nodes.items():
-                print(f"  - {node_name}: {node.hostname} (v{node.teraslice_version})")
-                total = node.total if node.total is not None else "N/A"
-                print(f"    Workers: {len(node.active)}/{total} active")
-            print()
-
             # Test controllers
             print("=" * 60)
             print("CONTROLLERS")
